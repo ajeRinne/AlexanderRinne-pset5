@@ -7,6 +7,7 @@
 //
 
 import UIKit
+import SQLite
 
 class MasterViewController: UITableViewController {
 
@@ -18,7 +19,8 @@ class MasterViewController: UITableViewController {
         super.viewDidLoad()
         // Do any additional setup after loading the view, typically from a nib.
         navigationItem.leftBarButtonItem = editButtonItem
-
+        
+        self.objects = ToDoManager.shared.loadListTable()
         let addButton = UIBarButtonItem(barButtonSystemItem: .add, target: self, action: #selector(insertNewObject(_:)))
         navigationItem.rightBarButtonItem = addButton
         if let split = splitViewController {
@@ -38,19 +40,40 @@ class MasterViewController: UITableViewController {
     }
 
     func insertNewObject(_ sender: Any) {
-        objects.insert(NSDate(), at: 0)
-        let indexPath = IndexPath(row: 0, section: 0)
-        tableView.insertRows(at: [indexPath], with: .automatic)
+        let alert = UIAlertController(title: "List", message: "Enter the name of the list you want to create.", preferredStyle: .alert)
+        
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel) { _ in
+            print("Cancel")
+        })
+        alert.addAction(UIAlertAction(title: "OK", style: .default) { _ in
+            print("OK")
+            let text = alert.textFields!.first!.text!
+            ToDoManager.shared.insertList(listText: text)
+            self.objects = ToDoManager.shared.loadListTable()
+            self.tableView.reloadData()
+            
+        })
+        
+        alert.addTextField { (textField) in
+            
+        }
+        
+        present(alert, animated: true)
     }
-
+    
+    
     // MARK: - Segues
 
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
         if segue.identifier == "showDetail" {
             if let indexPath = tableView.indexPathForSelectedRow {
-                let object = objects[indexPath.row] as! NSDate
+                var lists = ToDoManager.shared.self.loadListTable()
+                let list = lists[indexPath.row]
+                let listID = list.id
+
+//                let object = objects[indexPath.row] as! NSDate
                 let controller = (segue.destination as! UINavigationController).topViewController as! DetailViewController
-                controller.detailItem = object
+                controller.IDList = listID
                 controller.navigationItem.leftBarButtonItem = splitViewController?.displayModeButtonItem
                 controller.navigationItem.leftItemsSupplementBackButton = true
             }
@@ -64,14 +87,16 @@ class MasterViewController: UITableViewController {
     }
 
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return objects.count
+        let count : Int = ToDoManager.shared.loadListTable().count
+        return count
     }
 
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "Cell", for: indexPath)
-
-        let object = objects[indexPath.row] as! NSDate
-        cell.textLabel!.text = object.description
+        var lists = ToDoManager.shared.self.loadListTable()
+        let list = lists[indexPath.row]
+        cell.textLabel!.text = list.name
+        var listID = list.id
         return cell
     }
 
@@ -82,10 +107,14 @@ class MasterViewController: UITableViewController {
 
     override func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCellEditingStyle, forRowAt indexPath: IndexPath) {
         if editingStyle == .delete {
-            objects.remove(at: indexPath.row)
-            tableView.deleteRows(at: [indexPath], with: .fade)
+            var lists = ToDoManager.shared.self.loadListTable()
+            let list = lists[indexPath.row]
+
+            ToDoManager.shared.deleteList(ID: list.id)
+            self.tableView.reloadData()
+
         } else if editingStyle == .insert {
-            // Create a new instance of the appropriate class, insert it into the array, and add a new row to the table view.
+
         }
     }
 
